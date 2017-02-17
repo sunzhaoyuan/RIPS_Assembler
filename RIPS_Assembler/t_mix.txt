@@ -1,0 +1,5 @@
+Label:
+add   d2
+ sub b10110
+loadsp h0a0 
+bnez Label
