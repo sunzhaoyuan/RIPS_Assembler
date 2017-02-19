@@ -12,7 +12,7 @@ import java.io.PrintWriter;
 /**
  * This is an assembler for RIPS.
  *
- * @author sunz1. Created Feb 8, 2017.
+ * @author Zhaoyuan Sun and Shijun Yu at Rose-Hulman. Created Feb 8, 2017.
  */
 public class Assembler {
 	final Integer OPCODE_LENGTH = 5;
@@ -22,15 +22,6 @@ public class Assembler {
 			"orui", "loadi", "input", "stemp", "itemp" };
 
 	HashMap<String, String> inst;
-
-	// Test Plan:
-	// PASS: Test Only Normal Operations
-	// PASS: Test Only branch
-	// PASS: Test mixed branch and NorOp
-	// PASS: Test jal
-	// TODO: Test jump
-	// TODO: Test Invalid Operation
-	// TODO: Test input larger than 11-bit
 
 	/**
 	 * main class, it generates final output
@@ -47,23 +38,13 @@ public class Assembler {
 		String filePath = br.readLine();
 		ArrayList<String> file = new ArrayList<>();
 		file = fileReader(filePath);
-		// write in files, DONE: it worked
+		// write in files
 		try (PrintWriter writer = new PrintWriter(filePath.replaceAll(".txt", "") + "_Output" + ".txt")) {
 			for (String str : file) { // write output in format
 				writer.println(str);
 			}
 		}
-		System.out.println("system terminalted.");
-		// convert the binary (Assembler takes care of it)
-
-		// DONE: WHAT IF THERE ARE SEVERAL SPACES BETWEEN INST AND VALUE
-		// DONE: WHAT ABOUT BRANCH AND LABEL -> HashMap(String, ForHashMap)
-		// TODO: WHAT ABOUT THEY HAVE SAME MEMORY ADDR -> What???
-		// TODO: WHAT ABOUT JUMP?? -> same logic as brach -> slightly
-		// different(ja)
-		// DONE: NEED TO BE IN FORMATTED???
-		// DONE: write in file, not working fixed
-		// TODO: ??? I forgot. Feb 14
+		System.out.println("Process is finished. Please check your folder.");
 	}
 
 	/*
@@ -93,90 +74,87 @@ public class Assembler {
 		File inputFile = new File(file);
 		Assembler assembler = new Assembler();
 		ArrayList<String> outputArray = new ArrayList<>();
-		HashMap<String, ForBranchMap> branchMap = new HashMap<>();
+		// 2 HashMaps for real-label and label-in-branch
+		HashMap<String, Integer> branchMap = new HashMap<>();
+		HashMap<String, Integer> labelMap = new HashMap<>();
+		int currentLine = 0;
 		try {
 			@SuppressWarnings("resource")
 			BufferedReader bReader = new BufferedReader(new FileReader(inputFile));
 			String line = bReader.readLine();
 			while (line != null) {
-				// deal with hashMap: TODO:extremely inefficient, it's ok.
-				if (!branchMap.isEmpty()) {
-					for (String key : branchMap.keySet()) {
-						if (!branchMap.get(key).isSecondTime) {
-							Integer currentLines = branchMap.get(key).lines;
-							Integer newValue = currentLines + 1;
-							branchMap.put(key, assembler.new ForBranchMap(branchMap.get(key).label, newValue, false));
-						}
-					}
-				}
 				line = line.trim(); // first delete leading and tailing
 									// spaces,
 									// then we can do detector
-				// DONE: need detect ":" -> cover this in detector
 				ForDetector forDetector = assembler.instHandler(line);
 				int index = forDetector.index;
 				line = line.replaceAll("\\s+", ""); // replace all
 													// whiteSpaces
 													// and invisible chars
-				// String label = line.substring(index, line.length());
 				if (forDetector.isLabel) {
 					String label = line.substring(0, index);
-					if (branchMap.containsKey(label)) {
-						Integer currentLines = branchMap.get(label).lines;
-						branchMap.put(label, assembler.new ForBranchMap(label, currentLines, true));
-					} else { // first time see label
-						ForBranchMap forHashMap = assembler.new ForBranchMap(label, 1, false);
-						branchMap.put(label, forHashMap);
-					}
+					labelMap.put(label, currentLine);
 				} else if (forDetector.isBranch) {
 					String label = line.substring(index, line.length());
 					String op = line.substring(0, index);
 					String opCode = assembler.inst.get(op); // in Bin
-					if (branchMap.containsKey(label)) {
-						Integer currentLines = branchMap.get(label).lines;
-						branchMap.put(label, assembler.new ForBranchMap(label, currentLines, true));
-						outputArray.add(opCode + "-" + label);
-					} else { // first time see branch
-						ForBranchMap forBranchMap = assembler.new ForBranchMap(label, 1, false);
-						branchMap.put(label, forBranchMap);
-						outputArray.add(opCode + "+" + label);
+					Integer num = 0;
+					while (branchMap.containsKey(label)) {
+						// same label but in different brach lines
+						// first branch is just the label name
+						// then it is label name + unique number
+						label = label + " " + num;
+						num++;
 					}
+					branchMap.put(label, currentLine);
+					outputArray.add(opCode + label);
 				} else {// other instructions
 					String label = line.substring(0, index);
 					String opCode = assembler.inst.get(label);
-					System.out.println(label);
-					// DONE: works only when you have one space between op
-					// and
-					// value, fix index problem
 					String value = line.substring(index, line.length());
 					String valueBin = valToBin(value);
-					System.out.println(line.substring(index, line.length()));
 					String finalBin = opCode + valueBin;
-					// String finalHex = binToHex(finalBin);
-					// outputArray.add(finalHex); //final value is hex
 					outputArray.add(finalBin); // firstly add them as binary
 				}
 				line = bReader.readLine(); // read next line
+				currentLine++;
 			}
-			System.out.println("###OUT PUT###" + outputArray.toString());
-			System.out.println("###HashMap###" + toHMString(branchMap));
 
-			// DONE: second loop for correcting brach value
+			// second loop for correcting brach value
 			for (int i = 0; i < outputArray.size(); i++) {
 				String finalBin = outputArray.get(i);
 				if (!finalBin.matches("[0-9]+")) { // check if it has only
 													// numbers
 					String operation = finalBin.substring(0, 5);
-					// TODO: label is wrong
-					String label = finalBin.substring(6, finalBin.length());
-					String sign = finalBin.substring(5, 7); // it gets + or -
-															// sign
-//					System.out.println(i + " " + label);
-					String value = Integer.toString(branchMap.get(label).lines);
-					if (sign.equals("-")) {
-						value = sign + value;
+					String label = finalBin.substring(5, finalBin.length());
+					int branchLine = branchMap.get(label);
+					if (label.contains(" ")) {
+						int trim = label.indexOf(" ");
+						label = label.substring(0, trim);
 					}
-					String valInBin = valToBin(value); // value in Bin
+					int labelLine = labelMap.get(label);
+					int value = 0;
+					if (labelLine > branchLine) {
+						value = labelLine - branchLine - 1;
+						int count = 0;
+						for (String current : labelMap.keySet()) {
+							if (branchLine < labelMap.get(current) && labelMap.get(current) < labelLine) {
+								count++;
+							}
+						}
+						value -= count;
+					} else {
+						value = labelLine - branchLine;
+						int count = 0;
+						for (String current : labelMap.keySet()) {
+							if (labelLine < labelMap.get(current) && labelMap.get(current) < branchLine) {
+								count++;
+							}
+						}
+						value += count;
+					}
+					String result = "d" + value;
+					String valInBin = valToBin(result); // value in Bin
 					finalBin = operation + valInBin;
 					String finalHex = binToHex(finalBin);
 					outputArray.set(i, finalHex);
@@ -198,34 +176,18 @@ public class Assembler {
 		return outputArray;
 	}
 
-	/*
-	 * a better hashMap toString function
-	 */
-	private static String toHMString(HashMap<String, ForBranchMap> input) {
-		String toReturn = "";
-		for (String currentKey : input.keySet()) {
-			ForBranchMap currentFHM = input.get(currentKey);
-			toReturn += "[" + currentKey.toString() + " => " + currentFHM.lines + ", " + currentFHM.label + ", "
-					+ currentFHM.isSecondTime + "]\n";
-		}
-		return toReturn;
-	}
-
 	private static String binToHex(String bin) {
 		int decimal = Integer.parseInt(bin, 2);
 		String hex = Integer.toString(decimal, 16);
 		Integer generation = 4 - hex.length();
-		hex = new String(new char[generation]).replace("\0", "0") + hex; // 4
-																			// bytes
+		hex = new String(new char[generation]).replace("\0", "0") + hex; // 4 bytes
 		return hex;
 	}
 
 	/*
-	 * it gets a number and convert it to binary DONE: need to extend every
-	 * value to 11-bit, just like opcode
+	 * it gets a number and convert it to binary
 	 * 
 	 */
-
 	private static String valToBin(String value) {
 		String toReturn = "";
 		switch (value.charAt(0)) {
@@ -239,33 +201,41 @@ public class Assembler {
 			break;
 		}
 		case 'd': {
-			System.out.println("d");
-			// if the char after d is '-', which means that the immediate is negative
-			if(value.charAt(1) == '-') {
-				// substring to get positive number
-				toReturn = Integer.toBinaryString(Integer.parseInt(value.substring(2, value.length()), 8));
-				// fill it with 1 in front
-				int generation_neg = 11 - toReturn.length();
-				// it will not be filled with 0 outside switch beacuse length is already 11
-				toReturn = new String(new char[generation_neg]).replace("\0", "1") + toReturn;
-			}else {
-				toReturn = Integer.toBinaryString(Integer.parseInt(value.substring(1), 8));
+			// if the char after d is '-', which means that the immediate is
+			// negative
+			if (value.charAt(1) == '-') {
+				// generate negative number algorithm
+				toReturn = toNegativeBinaryString(value);
+			} else {
+				toReturn = Integer.toBinaryString(Integer.parseInt(value.substring(1), 10));
 			}
-			System.out.println(toReturn);
 			break;
 		}
 		default:
 			break;
 		}
-		System.out.println(toReturn);
 		int generation = 11 - toReturn.length();
 		toReturn = new String(new char[generation]).replace("\0", "0") + toReturn;
 		return toReturn;
 	}
 
+	public static String toNegativeBinaryString(String value) {
+		String toReturn = "";
+		// take the positive part of the negative number, minus 1, convert to
+		// binary string
+		toReturn = Integer.toBinaryString(Integer.parseInt(value.substring(2, value.length()), 10) - 1);
+		// a dumb way to do bitwise flip (change 0 to 1, 1 to 0)
+		toReturn = toReturn.replaceAll("0", "2");
+		toReturn = toReturn.replaceAll("1", "0");
+		toReturn = toReturn.replaceAll("2", "1");
+		// fill it with 1 in front
+		int generation_neg = 11 - toReturn.length();
+		toReturn = new String(new char[generation_neg]).replace("\0", "1") + toReturn;
+		return toReturn;
+	}
+
 	/*
-	 * it returns the index of the end of inst + 1 -> maybe good for substring
-	 * later
+	 * it returns the index of the end of inst + 1
 	 * 
 	 */
 	private ForDetector instHandler(String instruction) {
@@ -288,19 +258,6 @@ public class Assembler {
 			this.index = index;
 			this.isLabel = isLabel; // do not need to add it into hashMap
 			this.isBranch = isBranch; // this means it has opcode
-		}
-	}
-
-	class ForBranchMap {
-		Integer lines;
-		String label;
-		// DONE: do we need is branch here? -> second time boolean
-		boolean isSecondTime;
-
-		public ForBranchMap(String label, Integer lines, boolean isSecondTime) {
-			this.lines = lines;
-			this.label = label;
-			this.isSecondTime = isSecondTime;
 		}
 	}
 }

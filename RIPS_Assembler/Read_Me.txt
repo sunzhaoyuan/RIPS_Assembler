@@ -6,11 +6,11 @@ It will automatically write a txt file named “your file’s name” + “_Outp
 Please Note:
 1. every value should have prefix. (d: Decimal; b: binary; h: hex).
 2. it outputs hex.
-3. Label must be in single line.
+3. Label must be in seperate single line.
 
 [Sample code:]
 relPrime:
-loadsp d-2
+loadsp d-1
 storesp d1
 andi d0
 WhileLoop:
@@ -24,7 +24,6 @@ addi d-1
 bnez WhileLoop
 addi d1
 storesp d-1
-loadsp d-1
 loadsp d0
 ja d0
 gcd:
@@ -42,7 +41,8 @@ loadsp d1
 bez End
 sltsp d2
 bnez Else
-loadsp d1
+loadsp d2
+submsp d1
 storesp d-1
 andi d0
 bez There

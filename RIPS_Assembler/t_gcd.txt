@@ -1,5 +1,5 @@
 relPrime:
-loadsp d-2
+loadsp d-1
 storesp d1
 andi d0
 WhileLoop:
@@ -13,7 +13,6 @@ addi d-1
 bnez WhileLoop
 addi d1
 storesp d-1
-loadsp d-1
 loadsp d0
 ja d0
 gcd:
@@ -31,7 +30,8 @@ loadsp d1
 bez End
 sltsp d2
 bnez Else
-loadsp d1
+loadsp d2
+submsp d1
 storesp d-1
 andi d0
 bez There
