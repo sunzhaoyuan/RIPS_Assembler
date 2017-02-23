@@ -16,10 +16,10 @@ import java.io.PrintWriter;
  */
 public class Assembler {
 	final Integer OPCODE_LENGTH = 5;
-	final Integer NUM_OF_INST = 26;
+	final Integer NUM_OF_INST = 31;
 	final String[] NAMES = { "add", "addi", "sub", "and", "or", "sll", "srl", "sra", "load", "store", "sstor", "lacc",
 			"loadsp", "storesp", "addsp", "ja", "jal", "bez", "bnez", "slt", "sltsp", "addmsp", "submsp", "andi", "ori",
-			"orui", "loadi", "input", "stemp", "itemp" };
+			"orui", "loadi", "input", "output", "stemp", "itemp" };
 
 	HashMap<String, String> inst;
 
