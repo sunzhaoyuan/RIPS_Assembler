@@ -8,6 +8,13 @@ Please Note:
 2. it outputs hex.
 3. Label must be in seperate single line.
 
+Error Detector: 
+if it detects errors, it will shut down the program immediately and return the error type.
+1.Instruction Error: if your instruction is invalid
+2.Label Error: if your branch target is invalid
+3.Value Error: if your value is larger than 2^11
+4.Value Syntax Error: if you don’t have prefix for values
+
 [Sample code:]
 relPrime:
 loadsp d-1

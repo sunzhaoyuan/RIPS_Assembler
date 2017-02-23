@@ -1,0 +1,49 @@
+relPrime:
+input d0
+storesp d8888
+andi d0
+WhileLoop:
+addi d2
+storesp d2
+addsp d4
+jal gcd
+addsp d-4
+loadsp d3
+addi d-1
+bnez LLLL
+loadsp d2
+output d0
+loadsp d0
+ja d0
+gcd:
+loadsp d-2
+storesp d2
+loadsp d-3
+storesp d1
+bnez Loop2
+loadsp d-2
+storesp d-1
+loadsp d0
+ja d0
+Loop2:
+loadsp d2
+bez End
+sltsp d1
+bnez Else
+loadsp d2
+submsp d1
+storesp d2
+andi d0
+bez There
+Else:
+loadsp d1
+submsp d2
+storesp d1
+andi d0
+There:
+bez Loop2
+End:
+loadsp d1
+storesp d-1
+loadsp d0
+ja d0

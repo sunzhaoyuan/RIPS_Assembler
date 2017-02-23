@@ -1,6 +1,8 @@
 import java.util.ArrayList;
 import java.util.HashMap;
 
+import com.sun.glass.ui.TouchInputSupport;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -71,6 +73,7 @@ public class Assembler {
 	 * 
 	 */
 	private static ArrayList<String> fileReader(String file) {
+		boolean hasError = false;
 		File inputFile = new File(file);
 		Assembler assembler = new Assembler();
 		ArrayList<String> outputArray = new ArrayList<>();
@@ -109,10 +112,28 @@ public class Assembler {
 					branchMap.put(label, currentLine);
 					outputArray.add(opCode + label);
 				} else {// other instructions
-					String label = line.substring(0, index);
-					String opCode = assembler.inst.get(label);
+					String instruction = line.substring(0, index);
+					if (!assembler.inst.containsKey(instruction)) {
+						outputArray.add("invalid instruction!!! Please read our user manual.");
+						hasError = true;
+						break;
+					}
+					String opCode = assembler.inst.get(instruction);
 					String value = line.substring(index, line.length());
+					if (value.length() > 1) {
+						Integer valueInDec = Integer.parseInt(value.substring(1));
+						if (valueInDec > 2048 || valueInDec < -2048) {
+							outputArray.add("Value out of bound! (2^11)");
+							hasError = true;
+							break;
+						}
+					}
 					String valueBin = valToBin(value);
+					if (valueBin.equals("Invalid Value Syntax.")) {
+						hasError = true;
+						outputArray.add("Invalid Value Syntax.");
+						break;
+					}
 					String finalBin = opCode + valueBin;
 					outputArray.add(finalBin); // firstly add them as binary
 				}
@@ -121,47 +142,54 @@ public class Assembler {
 			}
 
 			// second loop for correcting brach value
-			for (int i = 0; i < outputArray.size(); i++) {
-				String finalBin = outputArray.get(i);
-				if (!finalBin.matches("[0-9]+")) { // check if it has only
-													// numbers
-					String operation = finalBin.substring(0, 5);
-					String label = finalBin.substring(5, finalBin.length());
-					int branchLine = branchMap.get(label);
-					if (label.contains(" ")) {
-						int trim = label.indexOf(" ");
-						label = label.substring(0, trim);
-					}
-					int labelLine = labelMap.get(label);
-					int value = 0;
-					if (labelLine > branchLine) {
-						value = labelLine - branchLine - 1;
-						int count = 0;
-						for (String current : labelMap.keySet()) {
-							if (branchLine < labelMap.get(current) && labelMap.get(current) < labelLine) {
-								count++;
-							}
+			if (!hasError) {
+				for (int i = 0; i < outputArray.size(); i++) {
+					String finalBin = outputArray.get(i);
+					if (!finalBin.matches("[0-9]+")) { // check if it has only
+														// numbers
+						String operation = finalBin.substring(0, 5);
+						String label = finalBin.substring(5, finalBin.length());
+						int branchLine = branchMap.get(label);
+						if (label.contains(" ")) {
+							int trim = label.indexOf(" ");
+							label = label.substring(0, trim);
 						}
-						value -= count;
-					} else {
-						value = labelLine - branchLine;
-						int count = 0;
-						for (String current : labelMap.keySet()) {
-							if (labelLine < labelMap.get(current) && labelMap.get(current) < branchLine) {
-								count++;
-							}
+						// handle if label is invalid
+						if (!labelMap.containsKey(label)) {
+							outputArray.set(i, "Invalid Label.");
+							break;
 						}
-						value += count;
+						int labelLine = labelMap.get(label);
+						int value = 0;
+						if (labelLine > branchLine) {
+							value = labelLine - branchLine - 1;
+							int count = 0;
+							for (String current : labelMap.keySet()) {
+								if (branchLine < labelMap.get(current) && labelMap.get(current) < labelLine) {
+									count++;
+								}
+							}
+							value -= count;
+						} else {
+							value = labelLine - branchLine;
+							int count = 0;
+							for (String current : labelMap.keySet()) {
+								if (labelLine < labelMap.get(current) && labelMap.get(current) < branchLine) {
+									count++;
+								}
+							}
+							value += count;
+						}
+						String result = "d" + value;
+						String valInBin = valToBin(result); // value in Bin
+						finalBin = operation + valInBin;
+						String finalHex = binToHex(finalBin);
+						outputArray.set(i, finalHex);
+						// }
+					} else { // finalBin contains only numbers
+						String finalHex = binToHex(finalBin);
+						outputArray.set(i, finalHex);
 					}
-					String result = "d" + value;
-					String valInBin = valToBin(result); // value in Bin
-					finalBin = operation + valInBin;
-					String finalHex = binToHex(finalBin);
-					outputArray.set(i, finalHex);
-					// }
-				} else { // finalBin contains only numbers
-					String finalHex = binToHex(finalBin);
-					outputArray.set(i, finalHex);
 				}
 			}
 		} catch (FileNotFoundException e) {
@@ -180,7 +208,8 @@ public class Assembler {
 		int decimal = Integer.parseInt(bin, 2);
 		String hex = Integer.toString(decimal, 16);
 		Integer generation = 4 - hex.length();
-		hex = new String(new char[generation]).replace("\0", "0") + hex; // 4 bytes
+		hex = new String(new char[generation]).replace("\0", "0") + hex; // 4
+																			// bytes
 		return hex;
 	}
 
@@ -190,6 +219,7 @@ public class Assembler {
 	 */
 	private static String valToBin(String value) {
 		String toReturn = "";
+		boolean hasError = false;
 		switch (value.charAt(0)) {
 		case 'b': {
 			toReturn = value.substring(1);
@@ -211,11 +241,16 @@ public class Assembler {
 			}
 			break;
 		}
-		default:
+		default: {
+			toReturn = "Invalid Value Syntax.";
+			hasError = true;
 			break;
 		}
-		int generation = 11 - toReturn.length();
-		toReturn = new String(new char[generation]).replace("\0", "0") + toReturn;
+		}
+		if (!hasError) {
+			int generation = 11 - toReturn.length();
+			toReturn = new String(new char[generation]).replace("\0", "0") + toReturn;
+		}
 		return toReturn;
 	}
 
