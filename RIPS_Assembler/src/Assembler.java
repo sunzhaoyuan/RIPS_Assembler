@@ -1,8 +1,6 @@
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import com.sun.glass.ui.TouchInputSupport;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -12,7 +10,7 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 
 /**
- * This is an assembler for RIPS.
+ * This is an assembler for RIPS. It takes in Assembly codes and output hexDecimal of corresponding inputs
  *
  * @author Zhaoyuan Sun and Shijun Yu at Rose-Hulman. Created Feb 8, 2017.
  */
@@ -45,13 +43,15 @@ public class Assembler {
 			for (String str : file) { // write output in format
 				writer.println(str);
 			}
+			writer.close();
 		}
+		br.close();
 		System.out.println("Process is finished. Please check your folder.");
 	}
 
-	/*
-	 * put every instructions into HashMap in right order; initialize
-	 * everything.
+	/**
+	 * put every instructions into HashMap in right order; initialize opCode
+	 * 
 	 */
 	private Assembler() {
 		this.inst = new HashMap<>();
@@ -66,11 +66,12 @@ public class Assembler {
 		}
 	}
 
-	/*
+	/**
 	 * it reads the file, and return a ArrayList that contains the final outputs
 	 * 
-	 * 01101 111 1111 1111
+	 * ex. 01101 111 1111 1111
 	 * 
+	 * @return final hex output or errors
 	 */
 	private static ArrayList<String> fileReader(String file) {
 		boolean hasError = false;
@@ -86,9 +87,7 @@ public class Assembler {
 			BufferedReader bReader = new BufferedReader(new FileReader(inputFile));
 			String line = bReader.readLine();
 			while (line != null) {
-				line = line.trim(); // first delete leading and tailing
-									// spaces,
-									// then we can do detector
+				line = line.trim(); // instHandler cannot handel leading and tailing spaces
 				ForDetector forDetector = assembler.instHandler(line);
 				int index = forDetector.index;
 				line = line.replaceAll("\\s+", ""); // replace all
@@ -140,6 +139,7 @@ public class Assembler {
 				line = bReader.readLine(); // read next line
 				currentLine++;
 			}
+			bReader.close();
 
 			// second loop for correcting brach value
 			if (!hasError) {
@@ -180,7 +180,7 @@ public class Assembler {
 							}
 							value += count;
 						}
-						String result = "d" + value;
+						String result = "d" + value; //always in dec
 						String valInBin = valToBin(result); // value in Bin
 						finalBin = operation + valInBin;
 						String finalHex = binToHex(finalBin);
@@ -193,17 +193,23 @@ public class Assembler {
 				}
 			}
 		} catch (FileNotFoundException e) {
-			outputArray.add(e.getStackTrace().toString());
+			outputArray.add("FILE NOT FOUND");
 			e.printStackTrace();
 			System.out.println("FileNotFound");
 		} catch (IOException e) {
-			outputArray.add(e.getStackTrace().toString());
+//			outputArray.add(e.getStackTrace().toString()); //it doesn't have proper toString method
+			outputArray.add("IO EXCEPTION");
 			e.printStackTrace();
 			System.out.println("IOException");
 		}
 		return outputArray;
 	}
 
+	/**
+	 * this function converts binary to hexDecimal(4bytes)
+	 * 
+	 * @return input value in hex
+	 */
 	private static String binToHex(String bin) {
 		int decimal = Integer.parseInt(bin, 2);
 		String hex = Integer.toString(decimal, 16);
@@ -219,7 +225,7 @@ public class Assembler {
 	 */
 	private static String valToBin(String value) {
 		String toReturn = "";
-		boolean hasError = false;
+		boolean hasError = false; //for invalid value error
 		switch (value.charAt(0)) {
 		case 'b': {
 			toReturn = value.substring(1);
@@ -231,8 +237,7 @@ public class Assembler {
 			break;
 		}
 		case 'd': {
-			// if the char after d is '-', which means that the immediate is
-			// negative
+			// if the char after d is '-', which means that the immediate is negative
 			if (value.charAt(1) == '-') {
 				// generate negative number algorithm
 				toReturn = toNegativeBinaryString(value);
@@ -254,7 +259,11 @@ public class Assembler {
 		return toReturn;
 	}
 
-	public static String toNegativeBinaryString(String value) {
+	/*
+	 * a much better Signed Binary Converter
+	 * 
+	 */
+	private static String toNegativeBinaryString(String value) {
 		String toReturn = "";
 		// take the positive part of the negative number, minus 1, convert to
 		// binary string
@@ -269,9 +278,10 @@ public class Assembler {
 		return toReturn;
 	}
 
-	/*
-	 * it returns the index of the end of inst + 1
+	/**
+	 * it takes a instruction (could be branch or label), and convert it into coresponded (bin)opCode
 	 * 
+	 * @return: it returns the index of the end of inst + 1
 	 */
 	private ForDetector instHandler(String instruction) {
 		if (instruction.contains("bnez") || instruction.contains("bez") || instruction.contains("jal")) {
@@ -284,7 +294,12 @@ public class Assembler {
 		return new ForDetector(instruction.indexOf(" "), false, false);
 	}
 
-	class ForDetector {
+	/**
+	 * a wrapper class handle branch and labels
+	 * 
+	 * index: for later value calculation
+	 */
+	private class ForDetector {
 		int index;
 		boolean isLabel;
 		boolean isBranch;
